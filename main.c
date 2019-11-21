@@ -8,44 +8,49 @@
 #define READ_END 0
 #define WRITE_END 1
 
-void crible(int *in) {
+void crible(int *in, int limit, int last) {
 	int p;
 	if (read(in[READ_END], &p, sizeof(int)) == -1) {
 		perror("read");
 		exit(EXIT_FAILURE);
 	}
-	printf("%d\t", p);
 
-	int out[2];
-	if (pipe(out) == -1) {
-		perror("pipe");
-		exit(EXIT_FAILURE);
-	}
- 
-	pid_t pid = fork();
- 	if (pid == -1) {
- 		perror("fork");
- 		exit(EXIT_FAILURE);
- 	}
- 	if (pid) {
- 		close(out[READ_END]);
-		int i;
-		while (read(in[READ_END], &i, sizeof(int)) == sizeof(int)) {
-			if (i%p) {
-				if (write(out[WRITE_END], &i, sizeof(int)) == -1) {
-					perror("write");
-					exit(EXIT_FAILURE);
+	if (!(p > limit || p < last)) {
+
+		printf("%d\n", p);
+
+		int out[2];
+		if (pipe(out) == -1) {
+			perror("pipe");
+			exit(EXIT_FAILURE);
+		}
+	 
+		pid_t pid = fork();
+	 	if (pid == -1) {
+	 		perror("fork");
+	 		exit(EXIT_FAILURE);
+	 	}
+	 	if (pid) {
+	 		close(out[READ_END]);
+			int i;
+			while (read(in[READ_END], &i, sizeof(int)) == sizeof(int)) {
+				if (i%p) {
+					if (write(out[WRITE_END], &i, sizeof(int)) == -1) {
+						perror("write");
+						exit(EXIT_FAILURE);
+					}
 				}
 			}
-		}
-		close(in[READ_END]);
-		close(out[WRITE_END]);
-		wait(NULL);
- 	}
- 	else {
- 		close(out[WRITE_END]);
-		crible(out);
- 	}
+			close(in[READ_END]);
+			close(out[WRITE_END]);
+			wait(NULL);
+	 	}
+	 	else {
+	 		close(out[WRITE_END]);
+
+			crible(out, limit, p);
+	 	}
+	 }
 }
 
 int main(int argc, char *argv[]) {
@@ -77,7 +82,7 @@ int main(int argc, char *argv[]) {
 	}
 	else {
 		close(out[WRITE_END]);
-		crible(out);
+		crible(out, limit, 1);
 	}
 
 	exit(EXIT_SUCCESS);
